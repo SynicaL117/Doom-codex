@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CODEX — VEGA Intelligence Archive</title>
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg:           #050505;
+      --bg2:          #0b0b0b;
+      --panel:        #0d0d0d;
+      --border:       #2a1a00;
+      --border-hot:   #ff4500;
+      --ember:        #ff4500;
+      --ember-dim:    rgba(255,69,0,0.12);
+      --ember-glow:   rgba(255,69,0,0.35);
+      --blood:        #8b0000;
+      --gold:         #c8860a;
+      --rune:         #ff6a00;
+      --text:         #e8d5b0;
+      --text-dim:     #7a6a50;
+      --green-vega:   #00ff88;
+      --card-radius:  4px;
+      --viewer-h:     500px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Rajdhani', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      cursor: crosshair;
+    }
+
+    /* Scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.16) 2px, rgba(0,0,0,0.16) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* Vignette */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.88) 100%);
+      pointer-events: none;
+      z-index: 9998;
+    }
+
+    /* ─── HEADER ─── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(5,5,5,0.96);
+      border-bottom: 1px solid var(--border-hot);
+      backdrop-filter: blur(14px);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 72px;
+      box-shadow: 0 0 40px rgba(255,69,0,0.18), 0 2px 0 rgba(255,69,0,0.06);
+    }
+
+    .logo-group { display: flex; align-items: center; gap: 14px; }
+
+    .skull-icon {
+      width: 38px; height: 38px;
+      filter: drop-shadow(0 0 8px var(--ember));
+    }
+
+    .logo-text {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 900;
+      font-size: 2rem;
+      letter-spacing: 0.25em;
+      color: var(--ember);
+      text-shadow: 0 0 10px var(--ember), 0 0 30px rgba(255,69,0,0.45), 0 0 60px rgba(255,69,0,0.15);
+      animation: flicker 7s infinite;
+    }
+
+    @keyframes flicker {
+      0%,95%,100% { opacity: 1; }
+      96% { opacity: 0.82; }
+      97.5% { opacity: 1; }
+      98.5% { opacity: 0.65; }
+      99.2% { opacity: 1; }
+    }
+
+    .logo-sub {
+      font-size: 0.58rem;
+      color: var(--text-dim);
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      font-family: 'Share Tech Mono', monospace;
+      margin-top: 2px;
+    }
+
+    .header-right { display: flex; align-items: center; gap: 18px; }
+
+    .vega-status {
+      display: flex; align-items: center; gap: 8px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--green-vega);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .vega-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green-vega);
+      box-shadow: 0 0 8px var(--green-vega);
+      animation: vegaPulse 2s infinite;
+    }
+
+    @keyframes vegaPulse {
+      0%,100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.7); opacity: 0.4; }
+    }
+
+    .entry-count {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--text-dim);
+      letter-spacing: 0.1em;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+    }
+
+    /* ─── INTRO BANNER ─── */
+    .intro-banner {
+      position: relative;
+      padding: 38px 32px 30px;
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .intro-banner::before {
+      content: 'CODEX';
+      position: absolute; right: -10px; top: -16px;
+      font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 8.5rem;
+      color: rgba(255,69,0,0.028);
+      pointer-events: none; letter-spacing: 0.1em;
+      white-space: nowrap;
+    }
+
+    .rune-bar {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem; color: var(--rune);
+      letter-spacing: 0.22em; margin-bottom: 12px; opacity: 0.65;
+      min-height: 1em;
+    }
+
+    .intro-banner h2 {
+      font-family: 'Orbitron', sans-serif; font-weight: 700;
+      font-size: clamp(0.9rem, 2vw, 1.2rem);
+      color: var(--text); letter-spacing: 0.1em; margin-bottom: 10px;
+    }
+
+    .intro-banner p {
+      font-size: 0.88rem; color: var(--text-dim);
+      max-width: 600px; line-height: 1.8; font-weight: 300;
+    }
+
+    .warning-strip {
+      display: inline-flex; align-items: center; gap: 8px;
+      margin-top: 14px; padding: 6px 14px;
+      border: 1px solid rgba(255,69,0,0.28); border-radius: 2px;
+      background: rgba(255,69,0,0.07);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem; color: var(--ember); letter-spacing: 0.1em;
+    }
+
+    /* ─── MAIN ─── */
+    main {
+      max-width: 1080px; margin: 0 auto;
+      padding: 38px 22px 80px;
+      display: flex; flex-direction: column; gap: 18px;
+    }
+
+    /* ─── CODEX CARD ─── */
+    .codex-card {
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      background: var(--panel);
+      overflow: hidden;
+      position: relative;
+      transition: border-color 0.3s, box-shadow 0.3s;
+      animation: slideIn 0.5s ease both;
+    }
+
+    .codex-card::before {
+      content: '';
+      position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: linear-gradient(180deg, var(--ember), var(--blood));
+      opacity: 0; transition: opacity 0.3s;
+    }
+
+    .codex-card.open {
+      border-color: rgba(255,69,0,0.38);
+      box-shadow: 0 0 28px rgba(255,69,0,0.07), inset 0 0 50px rgba(255,69,0,0.018);
+    }
+    .codex-card.open::before { opacity: 1; }
+
+    .codex-card:nth-child(odd)  { animation-delay: 0.06s; }
+    .codex-card:nth-child(even) { animation-delay: 0.14s; }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-14px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ── Card header ── */
+    .card-header {
+      display: flex; align-items: center;
+      padding: 0; cursor: pointer; user-select: none;
+      background: transparent; border: none; width: 100%;
+      color: inherit; text-align: left; overflow: hidden;
+      transition: background 0.2s;
+    }
+    .card-header:hover { background: rgba(255,69,0,0.035); }
+
+    .card-header-index {
+      font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 1.7rem;
+      color: rgba(255,69,0,0.18);
+      width: 68px; text-align: center; flex-shrink: 0; line-height: 1;
+      padding: 16px 0;
+      border-right: 1px solid var(--border);
+      background: rgba(255,69,0,0.02);
+      transition: color 0.3s, background 0.3s;
+    }
+    .codex-card.open .card-header-index {
+      color: var(--ember);
+      background: rgba(255,69,0,0.06);
+      text-shadow: 0 0 12px var(--ember);
+    }
+
+    .card-header-body { flex: 1; padding: 16px 18px; }
+
+    .card-header-label {
+      font-family: 'Share Tech Mono', monospace; font-size: 0.58rem;
+      color: var(--rune); letter-spacing: 0.2em;
+      text-transform: uppercase; margin-bottom: 3px; opacity: 0.65;
+    }
+
+    .card-header-name {
+      font-family: 'Orbitron', sans-serif; font-size: 0.9rem; font-weight: 600;
+      letter-spacing: 0.08em; color: var(--text); transition: color 0.3s;
+    }
+    .codex-card.open .card-header-name { color: var(--ember); }
+
+    .card-header-file {
+      font-family: 'Share Tech Mono', monospace; font-size: 0.6rem;
+      color: var(--text-dim); margin-top: 2px;
+    }
+
+    .card-header-right {
+      display: flex; align-items: center; gap: 10px; padding: 0 18px; flex-shrink: 0;
+    }
+
+    .tag {
+      font-family: 'Share Tech Mono', monospace; font-size: 0.56rem;
+      letter-spacing: 0.1em; padding: 3px 7px;
+      border-radius: 2px; text-transform: uppercase;
+    }
+    .tag-ar  { border: 1px solid rgba(255,69,0,0.38); color: var(--ember); background: var(--ember-dim); }
+    .tag-3d  { border: 1px solid var(--border); color: var(--text-dim); }
+
+    .collapse-icon {
+      width: 26px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border); border-radius: 2px;
+      transition: border-color 0.3s, background 0.3s; flex-shrink: 0;
+    }
+    .collapse-icon svg {
+      width: 12px; height: 12px; fill: var(--text-dim);
+      transition: fill 0.3s, transform 0.35s ease;
+    }
+    .codex-card.open .collapse-icon { border-color: var(--ember); background: var(--ember-dim); }
+    .codex-card.open .collapse-icon svg { fill: var(--ember); transform: rotate(180deg); }
+
+    /* ── Card body ── */
+    .card-body {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.46s cubic-bezier(0.4,0,0.2,1);
+    }
+    .codex-card.open .card-body { grid-template-rows: 1fr; }
+
+    .card-body-inner { overflow: hidden; }
+
+    .card-body-content {
+      border-top: 1px solid transparent;
+      transition: border-color 0.3s;
+    }
+    .codex-card.open .card-body-content { border-top-color: var(--border); }
+
+    /* ── Viewer ── */
+    .viewer-wrap {
+      position: relative;
+      background: linear-gradient(155deg, #0f0700 0%, #080808 100%);
+    }
+
+    /* Corner brackets */
+    .corner { position: absolute; width: 18px; height: 18px; z-index: 10; pointer-events: none; }
+    .corner-tl { top: 0; left: 0; border-top: 2px solid var(--ember); border-left: 2px solid var(--ember); }
+    .corner-tr { top: 0; right: 0; border-top: 2px solid var(--ember); border-right: 2px solid var(--ember); }
+    .corner-bl { bottom: 0; left: 0; border-bottom: 2px solid var(--ember); border-left: 2px solid var(--ember); }
+    .corner-br { bottom: 0; right: 0; border-bottom: 2px solid var(--ember); border-right: 2px solid var(--ember); }
+
+    model-viewer {
+      width: 100%; height: var(--viewer-h);
+      background: transparent;
+      --progress-bar-color: var(--ember);
+      --progress-mask: transparent;
+    }
+
+    .progress-bar {
+      display: block; width: 100%; height: 2px;
+      background: rgba(255,255,255,0.04);
+      position: absolute; bottom: 0; left: 0;
+    }
+    .progress-bar.hide { display: none; }
+    .update-bar {
+      background: linear-gradient(90deg, var(--blood), var(--ember));
+      width: 0%; height: 100%;
+      transition: width 0.3s ease;
+      box-shadow: 0 0 8px var(--ember);
+    }
+
+    /* AR Button */
+    .ar-btn {
+      display: flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, var(--blood) 0%, #2a0000 100%);
+      color: var(--ember);
+      border: 1px solid var(--ember); border-radius: 2px;
+      padding: 10px 18px;
+      font-family: 'Orbitron', sans-serif; font-size: 0.6rem; font-weight: 700;
+      cursor: pointer; letter-spacing: 0.15em; text-transform: uppercase;
+      position: absolute; bottom: 18px; right: 18px;
+      transition: all 0.25s;
+      box-shadow: 0 0 14px rgba(255,69,0,0.18);
+    }
+    .ar-btn:hover {
+      background: linear-gradient(135deg, #5a0000 0%, var(--blood) 100%);
+      box-shadow: 0 0 30px rgba(255,69,0,0.5);
+      transform: translateY(-2px); color: #fff;
+    }
+    .ar-btn svg { width: 15px; height: 15px; }
+
+    /* AR Prompt */
+    .ar-prompt {
+      position: absolute; left: 50%; bottom: 68px;
+      transform: translateX(-50%);
+      opacity: 0; pointer-events: none; transition: opacity 0.4s;
+    }
+    model-viewer[ar-status="session-started"] .ar-prompt { opacity: 1; }
+    .ar-prompt img {
+      width: 42px;
+      filter: drop-shadow(0 0 8px var(--ember)) invert(1) sepia(1) saturate(5) hue-rotate(5deg);
+    }
+
+    /* HUD overlay */
+    .viewer-hud {
+      position: absolute; top: 14px; left: 14px;
+      font-family: 'Share Tech Mono', monospace; font-size: 0.58rem;
+      color: var(--ember); letter-spacing: 0.1em;
+      pointer-events: none; opacity: 0.65; line-height: 1.9; z-index: 5;
+    }
+    .viewer-hud-br {
+      position: absolute; bottom: 14px; left: 14px;
+      font-family: 'Share Tech Mono', monospace; font-size: 0.52rem;
+      color: var(--text-dim); letter-spacing: 0.07em;
+      pointer-events: none; opacity: 0.55; z-index: 5;
+    }
+
+    /* Info row */
+    .info-row {
+      display: flex; align-items: stretch;
+      border-top: 1px solid var(--border);
+    }
+    .info-cell {
+      flex: 1; padding: 12px 16px;
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .info-cell:last-child { border-right: none; }
+    .info-label {
+      font-family: 'Share Tech Mono', monospace; font-size: 0.52rem;
+      color: var(--text-dim); letter-spacing: 0.15em; text-transform: uppercase;
+    }
+    .info-value {
+      font-size: 0.78rem; font-weight: 500; color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+    }
+    .info-value.hot { color: var(--ember); }
+
+    /* Separator */
+    .rune-separator {
+      display: flex; align-items: center; gap: 12px; padding: 2px 0;
+    }
+    .rune-separator::before, .rune-separator::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+    }
+    .rune-separator span {
+      font-family: 'Share Tech Mono', monospace; font-size: 0.52rem;
+      color: var(--rune); letter-spacing: 0.22em; opacity: 0.45;
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 26px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: #030303; position: relative; overflow: hidden;
+    }
+    footer::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--ember), transparent);
+    }
+    .footer-left { display: flex; flex-direction: column; gap: 4px; }
+    .footer-vega {
+      font-family: 'Orbitron', sans-serif; font-size: 0.62rem;
+      letter-spacing: 0.2em; color: var(--green-vega);
+      text-shadow: 0 0 10px rgba(0,255,136,0.45);
+    }
+    .footer-sub {
+      font-family: 'Share Tech Mono', monospace; font-size: 0.52rem;
+      color: var(--text-dim); letter-spacing: 0.14em;
+    }
+    .footer-codex {
+      font-family: 'Orbitron', sans-serif; font-weight: 900;
+      font-size: 1.4rem; letter-spacing: 0.3em;
+      color: rgba(255,69,0,0.1);
+    }
+    .footer-right {
+      font-family: 'Share Tech Mono', monospace; font-size: 0.52rem;
+      color: var(--text-dim); letter-spacing: 0.1em;
+      text-align: right; line-height: 2.1;
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 640px) {
+      :root { --viewer-h: 360px; }
+      header { padding: 0 14px; }
+      .logo-text { font-size: 1.4rem; }
+      main { padding: 22px 10px 60px; }
+      .card-header-right { display: none; }
+      .info-row { flex-wrap: wrap; }
+      .info-cell { min-width: 50%; }
+      footer { flex-direction: column; gap: 14px; text-align: center; }
+    }
+
+    /* ─── AUDIO VISUALIZER WIDGET ─── */
+    #audio-widget {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    #audio-widget * { pointer-events: all; }
+
+    /* Label strip above visualizer */
+    .viz-label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 4px 10px;
+      background: rgba(5,5,5,0.88);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.54rem;
+      color: var(--text-dim);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      backdrop-filter: blur(8px);
+      transition: color 0.3s, border-color 0.3s;
+    }
+
+    .viz-label.playing {
+      border-color: rgba(255,69,0,0.4);
+      color: var(--ember);
+    }
+
+    .viz-label-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+
+    .viz-label.playing .viz-label-dot {
+      background: var(--ember);
+      box-shadow: 0 0 6px var(--ember);
+      animation: vizDotPulse 1.2s infinite;
+    }
+
+    @keyframes vizDotPulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: 0.5; transform: scale(1.5); }
+    }
+
+    /* Main panel: canvas + button row */
+    .viz-panel {
+      display: flex;
+      align-items: flex-end;
+      gap: 0;
+      background: rgba(5,5,5,0.92);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 0 30px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,69,0,0.05);
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .viz-panel.playing {
+      border-color: rgba(255,69,0,0.35);
+      box-shadow: 0 0 30px rgba(0,0,0,0.7), 0 0 18px rgba(255,69,0,0.1);
+    }
+
+    #viz-canvas {
+      display: block;
+      width: 180px;
+      height: 52px;
+      image-rendering: pixelated;
+    }
+
+    /* Divider between canvas and button */
+    .viz-divider {
+      width: 1px;
+      align-self: stretch;
+      background: var(--border);
+    }
+
+    /* Play/Pause button */
+    #viz-toggle {
+      width: 52px;
+      height: 52px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+
+    #viz-toggle:hover { background: rgba(255,69,0,0.08); }
+    #viz-toggle:active { background: rgba(255,69,0,0.15); }
+
+    #viz-toggle svg {
+      width: 18px; height: 18px;
+      fill: var(--text-dim);
+      transition: fill 0.25s, filter 0.25s;
+    }
+
+    #viz-toggle.playing svg {
+      fill: var(--ember);
+      filter: drop-shadow(0 0 5px var(--ember));
+    }
+
+    /* Autoplay unlock overlay */
+    #autoplay-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.82);
+      z-index: 20000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+    }
+
+    #autoplay-overlay .apo-skull {
+      font-size: 3rem;
+      filter: drop-shadow(0 0 16px var(--ember));
+      animation: floatSkull 2.5s ease-in-out infinite;
+    }
+
+    @keyframes floatSkull {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-10px); }
+    }
+
+    #autoplay-overlay h3 {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 900; font-size: 1.4rem;
+      letter-spacing: 0.2em; color: var(--ember);
+      text-shadow: 0 0 20px var(--ember);
+    }
+
+    #autoplay-overlay p {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem; color: var(--text-dim);
+      letter-spacing: 0.15em; text-transform: uppercase;
+    }
+
+    #autoplay-overlay .apo-btn {
+      padding: 12px 32px;
+      background: linear-gradient(135deg, var(--blood), #1a0000);
+      border: 1px solid var(--ember);
+      border-radius: 2px;
+      color: var(--ember);
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.2em; cursor: pointer;
+      box-shadow: 0 0 24px rgba(255,69,0,0.35);
+      transition: all 0.2s;
+      margin-top: 6px;
+    }
+
+    #autoplay-overlay .apo-btn:hover {
+      background: linear-gradient(135deg, #5a0000, var(--blood));
+      box-shadow: 0 0 40px rgba(255,69,0,0.6);
+      color: #fff;
+    }
+
+    @media (max-width: 640px) {
+      #audio-widget { bottom: 16px; right: 14px; }
+      #viz-canvas { width: 130px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── HEADER ─── -->
+<header>
+  <div class="logo-group">
+    <svg class="skull-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M20 3C11.7 3 5 9.7 5 18c0 4.8 2.2 9.1 5.6 12l.4 5h18l.4-5C32.8 27.1 35 22.8 35 18c0-8.3-6.7-15-15-15z" fill="#1a0000" stroke="#ff4500" stroke-width="1.2"/>
+      <path d="M13 22v5h4v-5h-4zm10 0v5h4v-5h-4z" fill="#ff4500" opacity="0.9"/>
+      <circle cx="14" cy="18" r="3" fill="#ff4500" opacity="0.8"/>
+      <circle cx="26" cy="18" r="3" fill="#ff4500" opacity="0.8"/>
+      <path d="M16 28h8M17 30h6M18 32h4" stroke="#8b0000" stroke-width="1" stroke-linecap="round"/>
+      <path d="M12 12c1-3 3-5 8-5s7 2 8 5" stroke="#ff6a00" stroke-width="0.8" opacity="0.45"/>
+    </svg>
+    <div>
+      <div class="logo-text">CODEX</div>
+      <div class="logo-sub">Demonic Entity Archive · VEGA Intelligence</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="vega-status"><div class="vega-dot"></div>VEGA ONLINE</div>
+    <div class="entry-count">ENTRIES: 005</div>
+  </div>
+</header>
+
+<!-- ─── INTRO ─── -->
+<div class="intro-banner">
+  <div class="rune-bar" id="rune-type"></div>
+  <h2>DEMONIC ENTITY COMPENDIUM — ACTIVE FIELD DATABASE</h2>
+  <p>VEGA has compiled all scanned demonic entities encountered throughout the Argent D'Nur incident. Tap any entry to expand the full dimensional scan. AR mode projects the entity into your physical space via WebXR. Pinch in AR to scale.</p>
+  <div class="warning-strip">
+    ⚠ WARNING — AR PROJECTION OF DEMONIC ENTITIES MAY TRIGGER ARGENT RESONANCE IN PROXIMITY
+  </div>
+</div>
+
+<!-- ─── MAIN ─── -->
+<main>
+
+  <!-- CARD 1 -->
+  <article class="codex-card" id="card-1">
+    <button class="card-header" onclick="toggleCard('card-1')" aria-expanded="false">
+      <div class="card-header-index">01</div>
+      <div class="card-header-body">
+        <div class="card-header-label">// CODEX ENTRY · ENTITY ALPHA</div>
+        <div class="card-header-name">ENTITY · ASSET ONE</div>
+        <div class="card-header-file">assets/asset1.glb · ARGENT RESONANCE DETECTED</div>
+      </div>
+      <div class="card-header-right">
+        <span class="tag tag-ar">AR READY</span>
+        <span class="tag tag-3d">3D SCAN</span>
+        <div class="collapse-icon">
+          <svg viewBox="0 0 14 14"><path d="M2 4l5 6 5-6H2z"/></svg>
+        </div>
+      </div>
+    </button>
+    <div class="card-body">
+      <div class="card-body-inner"><div class="card-body-content">
+        <div class="viewer-wrap">
+          <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+          <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+          <div class="viewer-hud">&gt; DIMENSIONAL SCAN ACTIVE<br>&gt; ARGENT ENERGY: 94.7%<br>&gt; THREAT LEVEL: EXTREME</div>
+          <div class="viewer-hud-br">PINCH TO SCALE · DRAG TO ORBIT · AR TO PROJECT</div>
+          <model-viewer src="assets/asset1.glb" ar ar-modes="webxr scene-viewer quick-look"
+            camera-controls tone-mapping="neutral" shadow-intensity="1"
+            auto-rotate auto-rotate-delay="900" rotation-per-second="14deg"
+            min-field-of-view="10deg" max-field-of-view="90deg" interaction-prompt="none">
+            <div class="progress-bar hide" slot="progress-bar"><div class="update-bar"></div></div>
+            <button slot="ar-button" class="ar-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8V5a2 2 0 012-2h3M22 8V5a2 2 0 00-2-2h-3M2 16v3a2 2 0 002 2h3M22 16v3a2 2 0 01-2 2h-3"/><circle cx="12" cy="12" r="3"/></svg>
+              PROJECT INTO REALITY
+            </button>
+            <div class="ar-prompt" slot="ar-prompt"><img src="https://modelviewer.dev/shared-assets/icons/hand.png" alt="AR"></div>
+          </model-viewer>
+        </div>
+        <div class="info-row">
+          <div class="info-cell"><span class="info-label">File</span><span class="info-value">asset1.glb</span></div>
+          <div class="info-cell"><span class="info-label">AR Mode</span><span class="info-value hot">WebXR · Scene Viewer</span></div>
+          <div class="info-cell"><span class="info-label">Scale</span><span class="info-value">Pinch Gesture</span></div>
+          <div class="info-cell"><span class="info-label">Capture</span><span class="info-value hot">Gallery Save</span></div>
+        </div>
+      </div></div>
+    </div>
+  </article>
+
+  <div class="rune-separator"><span>// ᚨᚱᚷᛖᚾᛏ ᛋᛖᛈᚨᚱᚨᛏᛟᚱ //</span></div>
+
+  <!-- CARD 2 -->
+  <article class="codex-card" id="card-2">
+    <button class="card-header" onclick="toggleCard('card-2')" aria-expanded="false">
+      <div class="card-header-index">02</div>
+      <div class="card-header-body">
+        <div class="card-header-label">// CODEX ENTRY · ENTITY BETA</div>
+        <div class="card-header-name">ENTITY · ASSET TWO</div>
+        <div class="card-header-file">assets/asset2.glb · HELLWAVE SIGNATURE CONFIRMED</div>
+      </div>
+      <div class="card-header-right">
+        <span class="tag tag-ar">AR READY</span>
+        <span class="tag tag-3d">3D SCAN</span>
+        <div class="collapse-icon">
+          <svg viewBox="0 0 14 14"><path d="M2 4l5 6 5-6H2z"/></svg>
+        </div>
+      </div>
+    </button>
+    <div class="card-body">
+      <div class="card-body-inner"><div class="card-body-content">
+        <div class="viewer-wrap">
+          <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+          <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+          <div class="viewer-hud">&gt; DIMENSIONAL SCAN ACTIVE<br>&gt; ARGENT ENERGY: 87.2%<br>&gt; THREAT LEVEL: HIGH</div>
+          <div class="viewer-hud-br">PINCH TO SCALE · DRAG TO ORBIT · AR TO PROJECT</div>
+          <model-viewer src="assets/asset2.glb" ar ar-modes="webxr scene-viewer quick-look"
+            camera-controls tone-mapping="neutral" shadow-intensity="1"
+            auto-rotate auto-rotate-delay="900" rotation-per-second="14deg"
+            min-field-of-view="10deg" max-field-of-view="90deg" interaction-prompt="none">
+            <div class="progress-bar hide" slot="progress-bar"><div class="update-bar"></div></div>
+            <button slot="ar-button" class="ar-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8V5a2 2 0 012-2h3M22 8V5a2 2 0 00-2-2h-3M2 16v3a2 2 0 002 2h3M22 16v3a2 2 0 01-2 2h-3"/><circle cx="12" cy="12" r="3"/></svg>
+              PROJECT INTO REALITY
+            </button>
+            <div class="ar-prompt" slot="ar-prompt"><img src="https://modelviewer.dev/shared-assets/icons/hand.png" alt="AR"></div>
+          </model-viewer>
+        </div>
+        <div class="info-row">
+          <div class="info-cell"><span class="info-label">File</span><span class="info-value">asset2.glb</span></div>
+          <div class="info-cell"><span class="info-label">AR Mode</span><span class="info-value hot">WebXR · Scene Viewer</span></div>
+          <div class="info-cell"><span class="info-label">Scale</span><span class="info-value">Pinch Gesture</span></div>
+          <div class="info-cell"><span class="info-label">Capture</span><span class="info-value hot">Gallery Save</span></div>
+        </div>
+      </div></div>
+    </div>
+  </article>
+
+  <div class="rune-separator"><span>// ᚨᚱᚷᛖᚾᛏ ᛋᛖᛈᚨᚱᚨᛏᛟᚱ //</span></div>
+
+  <!-- CARD 3 -->
+  <article class="codex-card" id="card-3">
+    <button class="card-header" onclick="toggleCard('card-3')" aria-expanded="false">
+      <div class="card-header-index">03</div>
+      <div class="card-header-body">
+        <div class="card-header-label">// CODEX ENTRY · ENTITY GAMMA</div>
+        <div class="card-header-name">ENTITY · ASSET THREE</div>
+        <div class="card-header-file">assets/asset3.glb · CORRUPTED ARGENT TRACE</div>
+      </div>
+      <div class="card-header-right">
+        <span class="tag tag-ar">AR READY</span>
+        <span class="tag tag-3d">3D SCAN</span>
+        <div class="collapse-icon">
+          <svg viewBox="0 0 14 14"><path d="M2 4l5 6 5-6H2z"/></svg>
+        </div>
+      </div>
+    </button>
+    <div class="card-body">
+      <div class="card-body-inner"><div class="card-body-content">
+        <div class="viewer-wrap">
+          <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+          <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+          <div class="viewer-hud">&gt; DIMENSIONAL SCAN ACTIVE<br>&gt; ARGENT ENERGY: 91.3%<br>&gt; THREAT LEVEL: EXTREME</div>
+          <div class="viewer-hud-br">PINCH TO SCALE · DRAG TO ORBIT · AR TO PROJECT</div>
+          <model-viewer src="assets/asset3.glb" ar ar-modes="webxr scene-viewer quick-look"
+            camera-controls tone-mapping="neutral" shadow-intensity="1"
+            auto-rotate auto-rotate-delay="900" rotation-per-second="14deg"
+            min-field-of-view="10deg" max-field-of-view="90deg" interaction-prompt="none">
+            <div class="progress-bar hide" slot="progress-bar"><div class="update-bar"></div></div>
+            <button slot="ar-button" class="ar-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8V5a2 2 0 012-2h3M22 8V5a2 2 0 00-2-2h-3M2 16v3a2 2 0 002 2h3M22 16v3a2 2 0 01-2 2h-3"/><circle cx="12" cy="12" r="3"/></svg>
+              PROJECT INTO REALITY
+            </button>
+            <div class="ar-prompt" slot="ar-prompt"><img src="https://modelviewer.dev/shared-assets/icons/hand.png" alt="AR"></div>
+          </model-viewer>
+        </div>
+        <div class="info-row">
+          <div class="info-cell"><span class="info-label">File</span><span class="info-value">asset3.glb</span></div>
+          <div class="info-cell"><span class="info-label">AR Mode</span><span class="info-value hot">WebXR · Scene Viewer</span></div>
+          <div class="info-cell"><span class="info-label">Scale</span><span class="info-value">Pinch Gesture</span></div>
+          <div class="info-cell"><span class="info-label">Capture</span><span class="info-value hot">Gallery Save</span></div>
+        </div>
+      </div></div>
+    </div>
+  </article>
+
+  <div class="rune-separator"><span>// ᚨᚱᚷᛖᚾᛏ ᛋᛖᛈᚨᚱᚨᛏᛟᚱ //</span></div>
+
+  <!-- CARD 4 -->
+  <article class="codex-card" id="card-4">
+    <button class="card-header" onclick="toggleCard('card-4')" aria-expanded="false">
+      <div class="card-header-index">04</div>
+      <div class="card-header-body">
+        <div class="card-header-label">// CODEX ENTRY · ENTITY DELTA</div>
+        <div class="card-header-name">ENTITY · ASSET FOUR</div>
+        <div class="card-header-file">assets/asset4.glb · MAYKR ORIGIN DETECTED</div>
+      </div>
+      <div class="card-header-right">
+        <span class="tag tag-ar">AR READY</span>
+        <span class="tag tag-3d">3D SCAN</span>
+        <div class="collapse-icon">
+          <svg viewBox="0 0 14 14"><path d="M2 4l5 6 5-6H2z"/></svg>
+        </div>
+      </div>
+    </button>
+    <div class="card-body">
+      <div class="card-body-inner"><div class="card-body-content">
+        <div class="viewer-wrap">
+          <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+          <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+          <div class="viewer-hud">&gt; DIMENSIONAL SCAN ACTIVE<br>&gt; ARGENT ENERGY: 79.8%<br>&gt; THREAT LEVEL: HIGH</div>
+          <div class="viewer-hud-br">PINCH TO SCALE · DRAG TO ORBIT · AR TO PROJECT</div>
+          <model-viewer src="assets/asset4.glb" ar ar-modes="webxr scene-viewer quick-look"
+            camera-controls tone-mapping="neutral" shadow-intensity="1"
+            auto-rotate auto-rotate-delay="900" rotation-per-second="14deg"
+            min-field-of-view="10deg" max-field-of-view="90deg" interaction-prompt="none">
+            <div class="progress-bar hide" slot="progress-bar"><div class="update-bar"></div></div>
+            <button slot="ar-button" class="ar-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8V5a2 2 0 012-2h3M22 8V5a2 2 0 00-2-2h-3M2 16v3a2 2 0 002 2h3M22 16v3a2 2 0 01-2 2h-3"/><circle cx="12" cy="12" r="3"/></svg>
+              PROJECT INTO REALITY
+            </button>
+            <div class="ar-prompt" slot="ar-prompt"><img src="https://modelviewer.dev/shared-assets/icons/hand.png" alt="AR"></div>
+          </model-viewer>
+        </div>
+        <div class="info-row">
+          <div class="info-cell"><span class="info-label">File</span><span class="info-value">asset4.glb</span></div>
+          <div class="info-cell"><span class="info-label">AR Mode</span><span class="info-value hot">WebXR · Scene Viewer</span></div>
+          <div class="info-cell"><span class="info-label">Scale</span><span class="info-value">Pinch Gesture</span></div>
+          <div class="info-cell"><span class="info-label">Capture</span><span class="info-value hot">Gallery Save</span></div>
+        </div>
+      </div></div>
+    </div>
+  </article>
+
+  <div class="rune-separator"><span>// ᚨᚱᚷᛖᚾᛏ ᛋᛖᛈᚨᚱᚨᛏᛟᚱ //</span></div>
+
+  <!-- CARD 5 -->
+  <article class="codex-card" id="card-5">
+    <button class="card-header" onclick="toggleCard('card-5')" aria-expanded="false">
+      <div class="card-header-index">05</div>
+      <div class="card-header-body">
+        <div class="card-header-label">// CODEX ENTRY · ENTITY EPSILON</div>
+        <div class="card-header-name">ENTITY · ASSET FIVE</div>
+        <div class="card-header-file">assets/asset5.glb · SENTINEL PRIME RELIC</div>
+      </div>
+      <div class="card-header-right">
+        <span class="tag tag-ar">AR READY</span>
+        <span class="tag tag-3d">3D SCAN</span>
+        <div class="collapse-icon">
+          <svg viewBox="0 0 14 14"><path d="M2 4l5 6 5-6H2z"/></svg>
+        </div>
+      </div>
+    </button>
+    <div class="card-body">
+      <div class="card-body-inner"><div class="card-body-content">
+        <div class="viewer-wrap">
+          <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+          <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+          <div class="viewer-hud">&gt; DIMENSIONAL SCAN ACTIVE<br>&gt; ARGENT ENERGY: 99.1%<br>&gt; THREAT LEVEL: CRITICAL</div>
+          <div class="viewer-hud-br">PINCH TO SCALE · DRAG TO ORBIT · AR TO PROJECT</div>
+          <model-viewer src="assets/asset5.glb" ar ar-modes="webxr scene-viewer quick-look"
+            camera-controls tone-mapping="neutral" shadow-intensity="1"
+            auto-rotate auto-rotate-delay="900" rotation-per-second="14deg"
+            min-field-of-view="10deg" max-field-of-view="90deg" interaction-prompt="none">
+            <div class="progress-bar hide" slot="progress-bar"><div class="update-bar"></div></div>
+            <button slot="ar-button" class="ar-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8V5a2 2 0 012-2h3M22 8V5a2 2 0 00-2-2h-3M2 16v3a2 2 0 002 2h3M22 16v3a2 2 0 01-2 2h-3"/><circle cx="12" cy="12" r="3"/></svg>
+              PROJECT INTO REALITY
+            </button>
+            <div class="ar-prompt" slot="ar-prompt"><img src="https://modelviewer.dev/shared-assets/icons/hand.png" alt="AR"></div>
+          </model-viewer>
+        </div>
+        <div class="info-row">
+          <div class="info-cell"><span class="info-label">File</span><span class="info-value">asset5.glb</span></div>
+          <div class="info-cell"><span class="info-label">AR Mode</span><span class="info-value hot">WebXR · Scene Viewer</span></div>
+          <div class="info-cell"><span class="info-label">Scale</span><span class="info-value">Pinch Gesture</span></div>
+          <div class="info-cell"><span class="info-label">Capture</span><span class="info-value hot">Gallery Save</span></div>
+        </div>
+      </div></div>
+    </div>
+  </article>
+
+</main>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <div class="footer-left">
+    <div class="footer-vega">⬡ DATA COLLECTED BY VEGA</div>
+    <div class="footer-sub">SUPER COMPUTER · UAC FORTRESS OF DOOM · ALL RIGHTS RESERVED</div>
+    <div class="footer-sub" style="margin-top:3px; opacity:0.38;">AR CAPTURE · GOOGLE SCENE VIEWER · WEBXR API · QUICK LOOK</div>
+  </div>
+  <div class="footer-codex">CODEX</div>
+  <div class="footer-right">
+    ENTRIES SCANNED: 005<br>
+    ARGENT SECTORS: ALL<br>
+    VEGA VERSION: 7.4.1<br>
+    <span style="color:var(--ember); opacity:0.55;">// RIP AND TEAR //</span>
+  </div>
+</footer>
+
+<!-- ─── BACKGROUND MUSIC ─── -->
+<audio id="bgm" src="bgm/bgm1.mp3" loop preload="auto"></audio>
+
+<!-- ─── AUTOPLAY UNLOCK OVERLAY ─── -->
+<div id="autoplay-overlay">
+  <div class="apo-skull">💀</div>
+  <h3>INITIALIZING VEGA AUDIO</h3>
+  <p>Demonic frequencies detected — authorization required</p>
+  <button class="apo-btn">▶ &nbsp; ENGAGE BGM</button>
+</div>
+
+<!-- ─── AUDIO VISUALIZER WIDGET ─── -->
+<div id="audio-widget">
+  <div class="viz-label" id="viz-label">
+    <div class="viz-label-dot"></div>
+    <span id="viz-label-text">BGM STANDBY</span>
+  </div>
+  <div class="viz-panel" id="viz-panel">
+    <canvas id="viz-canvas" width="360" height="104"></canvas>
+    <div class="viz-divider"></div>
+    <button id="viz-toggle" title="Play / Pause BGM" aria-label="Play / Pause BGM">
+      <svg id="icon-pause" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <rect x="5" y="3" width="4" height="18" rx="1"/>
+        <rect x="15" y="3" width="4" height="18" rx="1"/>
+      </svg>
+      <svg id="icon-play" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:none">
+        <path d="M6 3l15 9-15 9V3z"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- ─── SCRIPTS ─── -->
+<script>
+  // ── Collapsible cards ──────────────────────────
+  function toggleCard(id) {
+    const card = document.getElementById(id);
+    const btn  = card.querySelector('.card-header');
+    const isOpen = card.classList.contains('open');
+    card.classList.toggle('open', !isOpen);
+    btn.setAttribute('aria-expanded', String(!isOpen));
+
+    // Let model-viewer know it became visible
+    if (!isOpen) {
+      const mv = card.querySelector('model-viewer');
+      if (mv) {
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 460);
+      }
+    }
+  }
+
+  // ── Progress bars ──────────────────────────────
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('model-viewer').forEach(mv => {
+      const bar = mv.querySelector('.progress-bar');
+      const upd = mv.querySelector('.update-bar');
+      if (!bar || !upd) return;
+      mv.addEventListener('progress', e => {
+        const p = e.detail.totalProgress;
+        bar.classList.remove('hide');
+        upd.style.width = `${p * 100}%`;
+        if (p >= 1) setTimeout(() => bar.classList.add('hide'), 400);
+      });
+    });
+  });
+
+  // ── AR Capture overlay ─────────────────────────
+  //
+  // Scene Viewer (Android) handles photo capture natively inside its UI.
+  // For WebXR sessions, we inject a "CAPTURE" button over the session.
+  //
+  (function setupARCapture() {
+    // Shared overlay button (one instance, reused per session)
+    const captureBtn = document.createElement('button');
+    captureBtn.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M3 9V7a2 2 0 012-2h2l2-2h6l2 2h2a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+      </svg>
+      CAPTURE TO GALLERY
+    `;
+    Object.assign(captureBtn.style, {
+      display: 'none',
+      position: 'fixed',
+      bottom: '36px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      background: 'linear-gradient(135deg, #8b0000, #2a0000)',
+      color: '#ff4500',
+      border: '1px solid #ff4500',
+      borderRadius: '2px',
+      padding: '13px 26px',
+      fontFamily: "'Orbitron', sans-serif",
+      fontSize: '0.65rem',
+      fontWeight: '700',
+      letterSpacing: '0.18em',
+      cursor: 'pointer',
+      zIndex: '2147483647',
+      boxShadow: '0 0 28px rgba(255,69,0,0.55)',
+      display: 'none',
+      gap: '8px',
+      alignItems: 'center',
+    });
+    captureBtn.style.display = 'none';
+    document.body.appendChild(captureBtn);
+
+    let activeViewer = null;
+
+    document.querySelectorAll('model-viewer').forEach(mv => {
+      mv.addEventListener('ar-status', e => {
+        const status = e.detail.status;
+        if (status === 'session-started') {
+          activeViewer = mv;
+          captureBtn.style.display = 'flex';
+        } else if (status === 'not-presenting' || status === 'failed') {
+          captureBtn.style.display = 'none';
+          activeViewer = null;
+        }
+      });
+    });
+
+    captureBtn.addEventListener('click', async () => {
+      if (!activeViewer) return;
+      try {
+        // model-viewer provides toBlob() or we grab its canvas
+        let blob = null;
+
+        if (typeof activeViewer.toBlob === 'function') {
+          blob = await activeViewer.toBlob({ idealAspect: true });
+        } else {
+          // Fallback: grab canvas inside shadow DOM
+          const canvas = activeViewer.shadowRoot
+            ? activeViewer.shadowRoot.querySelector('canvas')
+            : activeViewer.querySelector('canvas');
+          if (canvas) {
+            blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.92));
+          }
+        }
+
+        if (!blob) { showToast('CAPTURE FAILED — NO CANVAS DATA'); return; }
+
+        const filename = `CODEX-AR-${Date.now()}.jpg`;
+        const file = new File([blob], filename, { type: 'image/jpeg' });
+
+        // Try Web Share API first (saves to gallery on Android/iOS)
+        if (
+          navigator.share &&
+          typeof navigator.canShare === 'function' &&
+          navigator.canShare({ files: [file] })
+        ) {
+          await navigator.share({
+            files: [file],
+            title: 'CODEX — Demonic Entity Scan',
+            text: 'AR capture from VEGA Codex'
+          });
+          showToast('CAPTURE SHARED TO GALLERY');
+        } else {
+          // Fallback: force download
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = filename;
+          document.body.appendChild(a); a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          showToast('CAPTURE SAVED');
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('AR capture:', err);
+          showToast('CAPTURE ERROR — CHECK PERMISSIONS');
+        }
+      }
+    });
+  })();
+
+  // ── Toast ──────────────────────────────────────
+  function showToast(msg) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    Object.assign(t.style, {
+      position: 'fixed', top: '86px', left: '50%',
+      transform: 'translateX(-50%)',
+      background: '#0d0d0d', border: '1px solid #ff4500',
+      color: '#ff4500', padding: '9px 20px',
+      fontFamily: "'Share Tech Mono', monospace",
+      fontSize: '0.65rem', letterSpacing: '0.12em',
+      zIndex: '99998', borderRadius: '2px',
+      boxShadow: '0 0 18px rgba(255,69,0,0.3)',
+      transition: 'opacity 0.4s', pointerEvents: 'none',
+    });
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 2800);
+  }
+
+  // ── Rune typing effect ─────────────────────────
+  (function runeType() {
+    const el = document.getElementById('rune-type');
+    if (!el) return;
+    const text = '// ᚠᚢᚦᚨᚱᚲ · CLASSIFIED ACCESS · UAC CLEARANCE LVL 5 · ᛗᛁᛚᛞᚱ //';
+    let i = 0;
+    const tick = () => {
+      if (i <= text.length) { el.textContent = text.slice(0, i++); setTimeout(tick, 26); }
+    };
+    setTimeout(tick, 700);
+  })();
+
+  // ══════════════════════════════════════════════
+  // ── BGM + AUDIO VISUALIZER ────────────────────
+  // ══════════════════════════════════════════════
+  (function initAudio() {
+
+    const bgm        = document.getElementById('bgm');
+    const overlay    = document.getElementById('autoplay-overlay');
+    const vizCanvas  = document.getElementById('viz-canvas');
+    const vizToggle  = document.getElementById('viz-toggle');
+    const vizPanel   = document.getElementById('viz-panel');
+    const vizLabel   = document.getElementById('viz-label');
+    const vizLblTxt  = document.getElementById('viz-label-text');
+    const iconPause  = document.getElementById('icon-pause');
+    const iconPlay   = document.getElementById('icon-play');
+    const ctx2d      = vizCanvas.getContext('2d');
+
+    // ── Web Audio API setup ──────────────────────
+    let audioCtx, analyser, source, rafId;
+    let isSetup = false;
+    let isPlaying = false;
+
+    function setupWebAudio() {
+      if (isSetup) return;
+      audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+      analyser  = audioCtx.createAnalyser();
+      analyser.fftSize = 128;          // 64 frequency bins — right density for 180px
+      analyser.smoothingTimeConstant = 0.78;
+      source    = audioCtx.createMediaElementSource(bgm);
+      source.connect(analyser);
+      analyser.connect(audioCtx.destination);
+      isSetup = true;
+    }
+
+    // ── Start BGM + visualizer ───────────────────
+    function startBGM() {
+      setupWebAudio();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      bgm.play().then(() => {
+        isPlaying = true;
+        updateUI();
+        drawLoop();
+      }).catch(err => {
+        console.warn('BGM play failed:', err);
+      });
+    }
+
+    // ── Pause BGM ────────────────────────────────
+    function pauseBGM() {
+      bgm.pause();
+      isPlaying = false;
+      updateUI();
+      cancelAnimationFrame(rafId);
+      drawIdle();
+    }
+
+    // ── Toggle ───────────────────────────────────
+    function toggleBGM() {
+      if (!isSetup) { startBGM(); return; }
+      isPlaying ? pauseBGM() : startBGM();
+    }
+
+    // ── Sync UI state ────────────────────────────
+    function updateUI() {
+      // Toggle button icons
+      iconPause.style.display = isPlaying ? 'block' : 'none';
+      iconPlay.style.display  = isPlaying ? 'none'  : 'block';
+
+      // Button ember glow
+      vizToggle.classList.toggle('playing', isPlaying);
+
+      // Panel border
+      vizPanel.classList.toggle('playing', isPlaying);
+
+      // Label
+      vizLabel.classList.toggle('playing', isPlaying);
+      vizLblTxt.textContent = isPlaying ? 'BGM PLAYING' : 'BGM PAUSED';
+    }
+
+    // ── Canvas: idle flat line ───────────────────
+    function drawIdle() {
+      const W = vizCanvas.width, H = vizCanvas.height;
+      ctx2d.clearRect(0, 0, W, H);
+
+      // Faint grid lines
+      ctx2d.strokeStyle = 'rgba(42,26,0,0.5)';
+      ctx2d.lineWidth = 1;
+      for (let y = H * 0.25; y < H; y += H * 0.25) {
+        ctx2d.beginPath(); ctx2d.moveTo(0, y); ctx2d.lineTo(W, y); ctx2d.stroke();
+      }
+
+      // Flat idle line
+      ctx2d.strokeStyle = 'rgba(255,69,0,0.25)';
+      ctx2d.lineWidth = 1.5;
+      ctx2d.beginPath();
+      ctx2d.moveTo(0, H * 0.85);
+      ctx2d.lineTo(W, H * 0.85);
+      ctx2d.stroke();
+    }
+
+    // ── Canvas: live frequency bars ──────────────
+    const dataArray = new Uint8Array(0); // will be replaced after setup
+
+    function drawLoop() {
+      rafId = requestAnimationFrame(drawLoop);
+
+      const bufLen = analyser.frequencyBinCount;
+      const freq   = new Uint8Array(bufLen);
+      analyser.getByteFrequencyData(freq);
+
+      const W = vizCanvas.width;
+      const H = vizCanvas.height;
+      const BAR_COUNT = 36;
+      const step      = Math.floor(bufLen / BAR_COUNT);
+      const gap       = 3;
+      const barW      = Math.floor((W - gap * (BAR_COUNT - 1)) / BAR_COUNT);
+
+      ctx2d.clearRect(0, 0, W, H);
+
+      // Background grid
+      ctx2d.strokeStyle = 'rgba(42,26,0,0.4)';
+      ctx2d.lineWidth = 1;
+      for (let y = H * 0.25; y < H; y += H * 0.25) {
+        ctx2d.beginPath(); ctx2d.moveTo(0, y); ctx2d.lineTo(W, y); ctx2d.stroke();
+      }
+
+      for (let i = 0; i < BAR_COUNT; i++) {
+        // Average a small slice of freq bins per bar
+        let sum = 0;
+        for (let k = 0; k < step; k++) sum += freq[i * step + k] || 0;
+        const avg = sum / step;
+
+        const norm   = avg / 255;
+        const barH   = Math.max(2, norm * H * 0.92);
+        const x      = i * (barW + gap);
+        const y      = H - barH;
+
+        // Color: interpolate blood-red → ember-orange → near-white at peaks
+        const r = 255;
+        const g = Math.floor(norm * norm * 180);      // more orange at high amp
+        const b = Math.floor(norm * norm * 30);
+        const alpha = 0.55 + norm * 0.45;
+
+        // Main bar
+        ctx2d.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+        ctx2d.fillRect(x, y, barW, barH);
+
+        // Bright top cap
+        const capH = Math.min(3, barH);
+        ctx2d.fillStyle = `rgba(255,${Math.min(255, g + 80)},${b + 20},${Math.min(1, alpha + 0.3)})`;
+        ctx2d.fillRect(x, y, barW, capH);
+
+        // Glow: subtle rect below bar simulating floor reflection
+        if (norm > 0.3) {
+          const glowH = Math.floor(barH * 0.18);
+          const grad  = ctx2d.createLinearGradient(0, H, 0, H - glowH);
+          grad.addColorStop(0, `rgba(${r},${g},${b},${norm * 0.22})`);
+          grad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx2d.fillStyle = grad;
+          ctx2d.fillRect(x, H - glowH, barW, glowH);
+        }
+      }
+    }
+
+    // ── Autoplay attempt ─────────────────────────
+    // Browsers block autoplay without user gesture.
+    // We try silently; if blocked, show unlock overlay.
+    function attemptAutoplay() {
+      setupWebAudio();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      bgm.play().then(() => {
+        isPlaying = true;
+        updateUI();
+        drawLoop();
+        overlay.style.display = 'none';
+      }).catch(() => {
+        // Autoplay blocked — show overlay
+        overlay.style.display = 'flex';
+        drawIdle();
+      });
+    }
+
+    // ── Overlay dismiss ───────────────────────────
+    overlay.addEventListener('click', () => {
+      overlay.style.display = 'none';
+      startBGM();
+    });
+
+    // ── Toggle button ─────────────────────────────
+    vizToggle.addEventListener('click', toggleBGM);
+
+    // ── Init ──────────────────────────────────────
+    drawIdle(); // paint idle state immediately
+    // Small delay so page renders first
+    setTimeout(attemptAutoplay, 600);
+
+  })();
+</script>
+</body>
+</html>
